@@ -6,6 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import entropy
 import seaborn as sns
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 # Function to calculate KL divergence
 def calculate_kl_divergence(p, q):
@@ -14,7 +15,7 @@ def calculate_kl_divergence(p, q):
     return entropy(p, q)
 
 # Streamlit App
-st.title("Multivariate Time Series Anomaly Detection Using KL Divergence")
+st.title("Advanced Anomaly Detection with KL Divergence")
 
 # Upload data
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
@@ -39,6 +40,7 @@ if uploaded_file:
     ref_distribution = np.mean(reference_window, axis=0)
 
     kl_divergences = []
+    feature_contributions = []
     for i in range(num_windows):
         start_idx = i * step_size
         end_idx = start_idx + window_size
@@ -47,21 +49,15 @@ if uploaded_file:
         kl_div = calculate_kl_divergence(ref_distribution, current_distribution)
         kl_divergences.append(kl_div)
 
+        # Feature-level contributions
+        feature_contributions.append(np.abs(ref_distribution - current_distribution))
+
     kl_divergences = np.array(kl_divergences)
+    feature_contributions = np.array(feature_contributions)
     threshold = kl_divergences.mean() + threshold_factor * kl_divergences.std()
     anomalies = np.where(kl_divergences > threshold)[0]
 
-    # Visualization
-    st.subheader("Normalized Data")
-    plt.figure(figsize=(15, 6))
-    for i in range(normalized_data.shape[1]):
-        plt.plot(normalized_data[:, i] + i, label=f'Feature {i+1}')
-    plt.title("Normalized Multivariate Time Series Data")
-    plt.xlabel("Time")
-    plt.ylabel("Normalized Value (offset for clarity)")
-    plt.legend()
-    st.pyplot(plt)
-
+    # Visualization: KL Divergence
     st.subheader("KL Divergence with Anomalies")
     plt.figure(figsize=(15, 6))
     plt.plot(kl_divergences, label="KL Divergence", color='blue')
@@ -73,23 +69,33 @@ if uploaded_file:
     plt.legend()
     st.pyplot(plt)
 
+    # Advanced Analysis: Root Cause Analysis
     st.subheader("Feature Contribution Heatmap")
-    contributions = []
-    for i in range(num_windows):
-        start_idx = i * step_size
-        end_idx = start_idx + window_size
-        window = normalized_data[start_idx:end_idx]
-        current_distribution = np.mean(window, axis=0)
-        contributions.append(np.abs(ref_distribution - current_distribution))
-
-    contributions = np.array(contributions)
     plt.figure(figsize=(12, 8))
-    sns.heatmap(contributions.T, cmap="coolwarm", cbar=True, xticklabels=False)
+    sns.heatmap(feature_contributions.T, cmap="coolwarm", cbar=True, xticklabels=False)
     plt.title("Feature Contribution to KL Divergence Across Sliding Windows")
     plt.xlabel("Window Index")
     plt.ylabel("Feature Index")
     st.pyplot(plt)
 
+    # Feature-level anomaly scores
+    st.subheader("Feature-Level Anomaly Scores")
+    feature_anomaly_scores = feature_contributions[anomalies, :].mean(axis=0)
+    feature_names = data.columns
+    scores_df = pd.DataFrame({
+        "Feature": feature_names,
+        "Anomaly Score": feature_anomaly_scores
+    }).sort_values(by="Anomaly Score", ascending=False)
+    st.dataframe(scores_df)
+
+    plt.figure(figsize=(10, 6))
+    plt.barh(scores_df["Feature"], scores_df["Anomaly Score"], color='skyblue')
+    plt.xlabel("Anomaly Score")
+    plt.ylabel("Feature")
+    plt.title("Feature-Level Anomaly Scores")
+    st.pyplot(plt)
+
+    # Dimensionality Reduction: PCA Visualization
     st.subheader("PCA Visualization of Anomalies")
     pca = PCA(n_components=2)
     reduced_data = pca.fit_transform(normalized_data)
