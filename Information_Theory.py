@@ -6,7 +6,6 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import entropy
 import seaborn as sns
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
 
 # Function to calculate KL divergence
 def calculate_kl_divergence(p, q):
