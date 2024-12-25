@@ -15,7 +15,7 @@ def calculate_kl_divergence(p, q):
     return entropy(p, q)
 
 # Streamlit App
-st.title("Advanced Anomaly Detection with KL Divergence")
+st.title("Anomaly Detection with KL Divergence")
 
 # Upload data
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
